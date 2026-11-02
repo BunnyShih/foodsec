@@ -33,7 +33,16 @@ py -3.14 -I build_dashboard.py              # 產 docs\index.html，瀏覽器直
 4. 瀏覽器開 github.com 的這個 repo → Settings → Pages → Build and deployment 的 Source 選 Deploy from a branch → Branch 選 main、資料夾選 /docs → Save。
 5. 等一到三分鐘，網址是 https://你的帳號.github.io/foodsec/ ，Settings → Pages 頁面上方會顯示。
 
-之後更新：本機跑 fetch 與 build → GitHub Desktop 看到 docs/index.html 與 data.json 變更 → Commit → Push origin，幾分鐘後 Pages 自動換新。要全自動改用 GitHub Actions 排程，見第二階段。
+之後更新：本機跑 fetch 與 build → GitHub Desktop 看到 docs/index.html 與 data.json 變更 → Commit → Push origin，幾分鐘後 Pages 自動換新。
+
+## 自動更新（GitHub Actions）
+
+`.github/workflows/update.yml` 每天台灣時間 20:00 在 GitHub 雲端跑：抓近 10 天增量、產頁面、由 github-actions 機器人把 docs 推回 main，Pages 自動換新。資料庫用 Actions 快取保留，快取失效就全抓一次。
+
+- 第一次：commit 這個檔推上去後，到 repo 的 Actions 頁 → 左側 update-dashboard → 右側 Run workflow 手動跑一次，看綠勾。第一次沒有快取會全抓，約 40 分鐘。
+- 之後每天自動跑；Actions 頁可看每次紀錄，紅叉點進去看哪一步失敗。
+- 排程時間改 cron 那行，格式是 UTC，台灣時間減 8 小時。
+- 本機就不必再手動跑；真要手動，本機跑完 commit 推上去也可以，兩邊不衝突，機器人下次會在你的版本上接著更新。
 
 ## 儀表板視角
 

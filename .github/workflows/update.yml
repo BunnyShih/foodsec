@@ -1,0 +1,61 @@
+# 每天台灣時間 20:00 在 GitHub 雲端抓行情增量、重產儀表板、推回 main，GitHub Pages 自動換新。
+# 批發市場早上交易、資料約中午後上線，所以晚上跑才抓得到當天。
+# 資料庫不進 repo，用 Actions 快取保留；快取失效就全抓一次（約 40 分鐘）。
+# Actions 頁面右側的 Run workflow 可以隨時手動跑一次。
+name: update-dashboard
+
+on:
+  schedule:
+    - cron: "0 12 * * *"   # UTC 12:00 = 台灣 20:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-dashboard
+  cancel-in-progress: false
+
+env:
+  TZ: Asia/Taipei
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 還原資料庫快取
+        uses: actions/cache@v4
+        with:
+          path: data/foodsec.db
+          key: foodsec-db-${{ github.run_id }}
+          restore-keys: |
+            foodsec-db-
+
+      - name: 抓行情（有資料庫抓增量，沒有就全抓）
+        run: |
+          if [ -f data/foodsec.db ]; then
+            python -I fetch_prices.py --days 10
+          else
+            python -I fetch_prices.py --days 400
+          fi
+
+      - name: 產儀表板
+        run: python -I build_dashboard.py
+
+      - name: 推回 main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "沒有變更"
+          else
+            git commit -m "更新儀表板 $(date +%Y-%m-%d)"
+            git push
+          fi
